@@ -20,11 +20,10 @@ jobs:
 
       - name: Set up SSH
         run: |
-          # Agregar la clave privada SSH a ~/.ssh/id_rsa
+         
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa  # Asegura que solo el usuario actual pueda leer la clave privada
+          chmod 600 ~/.ssh/id_rsa 
           mkdir -p ~/.ssh
-          # Asegurar que GitHub Actions reconozca la instancia EC2
           ssh-keyscan -t rsa ${{ secrets.AWS_INSTANCE_IP }} >> ~/.ssh/known_hosts
 
       - name: Set up AWS CLI
@@ -36,5 +35,4 @@ jobs:
 
       - name: Deploy to AWS EC2
         run: |
-          # Conexión SSH y ejecución de los comandos en EC2
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.AWS_INSTANCE_IP }} "cd /var/www/html && git pull && composer install --no-dev && php artisan migrate --force && php artisan optimize"
