@@ -24,7 +24,7 @@ jobs:
     #   run: composer install --no-dev --optimize-autoloader
 
     # - name: Run Laravel tests
-    #   run: php artisan test
+    #   run: php artisan test let
 
     - name: Deploy to AWS EC2
       env:
