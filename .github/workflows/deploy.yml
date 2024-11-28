@@ -1,38 +1,46 @@
-name: Laravel Deployment
+name: Laravel CI/CD
 
 on:
   push:
     branches:
-      - master
+      - master # Cambia "main" por la rama que usas para producción
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.0'
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.1 # Cambia según tu versión de PHP
+        extensions: mbstring, bcmath, pdo, mysql
+        tools: composer
 
-      - name: Set up SSH
-        run: |
-         
-          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa 
-          mkdir -p ~/.ssh
-          ssh-keyscan -t rsa ${{ secrets.AWS_INSTANCE_IP }} >> ~/.ssh/known_hosts
+    # - name: Install dependencies
+    #   run: composer install --no-dev --optimize-autoloader
 
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    # - name: Run Laravel tests
+    #   run: php artisan test
 
-      - name: Deploy to AWS EC2
-        run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.AWS_INSTANCE_IP }} "cd /var/www/html && git pull && composer install --no-dev && php artisan migrate --force && php artisan optimize"
+    - name: Deploy to AWS EC2
+      env:
+        AWS_HOST: ${{ secrets.AWS_HOST }}
+        AWS_USER: ${{ secrets.AWS_USER }}
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+      run: |
+        echo "$SSH_KEY" > ssh_key.pem
+        chmod 600 ssh_key.pem
+        ssh -o StrictHostKeyChecking=no -i ssh_key.pem $AWS_USER@$AWS_HOST << 'EOF'
+          cd /var/www/laravel
+          git pull origin main
+          composer install --no-dev --optimize-autoloader
+          php artisan migrate --force
+          php artisan cache:clear
+          php artisan config:cache
+          php artisan route:cache
+        EOF
+
